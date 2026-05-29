@@ -1,0 +1,403 @@
+﻿@using Application.Services
+@using Domain.Data
+@using Domain.Models
+
+@rendermode InteractiveServer
+<button class="btn btn-primary" @onclick="OpenFeedbackModal">نظرات</button>
+
+
+@if (IsVisible)
+{
+    <div class="custom-modal modal-xl">
+     
+        <button type="button" class="custom-btn-close" @onclick="CloseModal">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
+
+        <div class="modal-tabs">
+            <button class="modal-tab-button @(ActiveTab == "listComments" ? "active" : "")" @onclick="ShowList">نظرات</button>
+            <button class="modal-tab-button @(ActiveTab == "addComment" ? "active" : "")" @onclick="ShowAdd">افزودن نظر</button>
+        </div>
+
+        @if (ActiveTab == "listComments")
+        {
+            <div class="sharing-prompt">
+                <h3>تجربیات خود را با ما به اشتراک بگذارید!</h3>
+                <p>
+                    شما که تجربه‌ی خرید از دیجی‌کالا را دارید، حتماً نکاتی شنیدنی و مفید برای دیگر کاربران دارید.
+                    <br />
+                    <strong>نکات مثبت، منفی، یا حتی راهنمایی‌های خاص شما</strong> می‌تواند به دیگران در انتخاب بهتر کمک کند.
+                    <br />
+                    با کلیک بر روی «افزودن نظر»، نظر خود را ثبت کنید و به جامعه‌ی دیجی‌کالایی‌ها بپیوندید!
+                </p>
+            </div>
+        }
+
+        <div class="modal-content">
+            @if (ActiveTab == "addComment")
+            {
+                <EditForm Model="@NewFeedback" OnValidSubmit="@HandleNewCommentSubmit" FormName="newFeedbackForm">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="form-group">
+                        <label for="userName" class="form-label">نام شما:</label>
+                        <InputText id="userName" @bind-Value="NewFeedback.UserName" class="form-control" />
+                        <ValidationMessage For="@(() => NewFeedback.UserName)" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="userComment" class="form-label">نظر شما:</label>
+                      
+                        <InputTextArea id="userComment" @bind-Value="NewFeedback.Comment" class="form-control custom-textarea" rows="4" />
+                        <ValidationMessage For="@(() => NewFeedback.Comment)" />
+                    </div>
+
+                    <button type="submit" class="btn-submit">ارسال نظر</button>
+                </EditForm>
+            }
+            else
+            {
+                @if (Feedbacks == null)
+                {
+                    <p class="loading-message"><em>در حال بارگذاری نظرات...</em></p>
+                }
+                else if (!Feedbacks.Any())
+                {
+                    <p class="no-comments-message"><em>هیچ نظری ثبت نشده است.</em></p>
+                }
+                else
+                {
+                    @foreach (var feedback in Feedbacks.OrderByDescending(f => f.Cdate))
+                    {
+                        <div class="feedback-item">
+                            <div class="feedback-header">
+                                <h6 class="feedback-username"><strong>@feedback.UserName</strong></h6>
+                                <small class="feedback-date">@feedback.Cdate.ToString("yyyy-MM-dd HH:mm")</small>
+                            </div>
+                            <p class="feedback-comment">@feedback.Comment</p>
+                        </div>
+                    }
+                    @if (CurrentPageNumber <totalPages)
+                    {
+                        <div class="text-center my-3">
+                            <button class="btn btn-warning" @onclick="GetNextRecords">نظرات بیشتر</button>
+                        </div>
+                    }
+                    
+                }
+            }
+        </div>
+    </div>
+}
+
+
+<style>
+   
+
+    .custom-modal {
+        position: fixed; 
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%); 
+        background-color: white;
+        border-radius: 10px; 
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3); 
+        z-index: 1000; 
+        padding: 20px;
+        width: 90%; 
+        max-width: 600px; 
+    }
+
+    .modal-xl { 
+        max-width: 800px;
+    }
+
+    .custom-btn-close {
+        position: absolute; 
+        top: 10px;
+        right: 10px; 
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 0;
+        line-height: 1; 
+        color: #6c757d; 
+    }
+
+        .custom-btn-close:hover {
+            color: #dc3545; 
+        }
+
+        .custom-btn-close svg {
+            vertical-align: middle; 
+        }
+
+
+    .modal-tabs {
+        display: flex;
+        justify-content: center; 
+        margin-bottom: 20px;
+        border-bottom: 1px solid #dee2e6; 
+    }
+
+    .modal-tab-button {
+        background-color: transparent;
+        border: none;
+        padding: 10px 20px;
+        cursor: pointer;
+        font-size: 1.1rem;
+        color: #495057; 
+        transition: color 0.3s ease, border-bottom 0.3s ease; 
+    }
+
+        .modal-tab-button.active {
+            color: #007bff; 
+            font-weight: bold;
+            border-bottom: 3px solid #007bff; 
+        }
+
+        .modal-tab-button:not(.active):hover {
+            color: #007bff; 
+        }
+
+   
+    .sharing-prompt {
+        background-color: #eef7ff;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        text-align: center;
+        border-left: 4px solid #007bff;
+    }
+
+        .sharing-prompt h3 {
+            color: #0056b3;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .sharing-prompt p {
+            color: #333;
+            font-size: 0.95em;
+            line-height: 1.6;
+        }
+
+        .sharing-prompt strong {
+            color: #0056b3;
+        }
+
+    
+    .modal-content {
+        margin-top: 20px; 
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-label {
+        display: block; 
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #495057;
+    }
+
+    .form-control, .custom-textarea { 
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ced4da;
+        border-radius: 5px;
+        box-sizing: border-box; 
+    }
+  
+    textarea.form-control {
+        min-height: 100px; 
+        resize: vertical; 
+    }
+
+    .modal-content {
+        padding: 20px;
+        max-height: 400px; 
+        overflow-y: auto; 
+        
+    }
+
+   
+
+    .btn-submit {
+        background-color: #28a745; 
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: background-color 0.3s ease;
+    }
+
+        .btn-submit:hover {
+            background-color: #218838; 
+        }
+
+    .feedback-item {
+        border-bottom: 1px solid #eee;
+        padding-bottom: 15px;
+        margin-bottom: 15px;
+    }
+
+        .feedback-item:last-child {
+            border-bottom: none; 
+            margin-bottom: 0;
+        }
+
+    .feedback-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .feedback-username {
+        margin: 0;
+        color: #343a40;
+    }
+
+    .feedback-date {
+        color: #6c757d;
+        font-size: 0.85em;
+    }
+
+    .feedback-comment {
+        margin: 0;
+        color: #495057;
+        text-align: justify; 
+    }
+
+    .loading-message, .no-comments-message {
+        text-align: center;
+        color: #6c757d;
+        font-style: italic;
+        padding: 20px 0;
+    }
+
+</style>
+@inject DataContext context
+@code {
+    private bool IsVisible { get; set; } = false;
+    private string ActiveTab { get; set; } = "addComment"; 
+
+    private List<Feedback> Feedbacks { get; set; }
+    private int CurrentPageNumber { get; set; } = 1;
+    private int PageSize { get; set; } = 5; 
+    
+
+    [SupplyParameterFromForm]
+    public Feedback NewFeedback { get; set; } = new();
+
+   
+    [Inject] private FeedbackService FeedbackSvc { get; set; }
+
+  
+    [Inject] private IJSRuntime JSRuntime { get; set; }
+    int totalRecords = 0;
+    int totalPages = 0;
+    private async Task OpenFeedbackModal()
+    {
+        IsVisible = true;
+        ActiveTab = "listComments"; 
+        CurrentPageNumber = 1; 
+        Feedbacks = null; 
+       
+        
+
+      
+        await LoadFeedbacks();
+        
+    }
+
+   
+    private async Task LoadFeedbacks()
+    {
+        Feedbacks = FeedbackSvc.GetFeedbacks(CurrentPageNumber, PageSize, out totalRecords);
+        totalPages = totalRecords % PageSize == 0 ? totalRecords / PageSize : (int)(totalRecords / PageSize)+1;
+
+
+
+    }
+
+    
+   
+    private async Task ChangeActiveTabAsync(string tab)
+    {
+        ActiveTab = tab;
+        if (tab == "addComment")
+        {
+           
+            NewFeedback = new Feedback();
+        }
+       
+    }
+
+    private async Task CloseModal()
+    {
+        IsVisible = false;
+       
+        Feedbacks = null;
+    
+        NewFeedback = new Feedback();
+       
+    }
+
+    private async Task HandleNewCommentSubmit()
+    {
+        try
+        {
+            
+            await FeedbackSvc.AddFeedbackAsync(NewFeedback);
+
+           
+            await OpenFeedbackModal();
+          
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error submitting comment: " + ex.Message);
+         
+        }
+      
+    }
+    private async Task ShowList(MouseEventArgs e)
+    {
+        await ChangeActiveTabAsync("listComments");
+    }
+
+    private async Task ShowAdd(MouseEventArgs e)
+    {
+        await ChangeActiveTabAsync("addComment");
+    }
+
+    private async Task ShowListPanel(MouseEventArgs e)
+    {
+        await ChangeActiveTabAsync("listComments");
+    }
+
+    private async Task ShowAddPanel(MouseEventArgs e)
+    {
+        await ChangeActiveTabAsync("addComment");
+    }
+
+  
+    private void GetNextRecords(MouseEventArgs args)
+    {
+        CurrentPageNumber++;
+        Feedbacks.AddRange( FeedbackSvc.GetFeedbacks(CurrentPageNumber, PageSize, out totalRecords));
+        
+        
+    }
+}
+

@@ -1,0 +1,8 @@
+﻿
+<div style="display: @(IsShow ? "block" : "none") ;width:70%;position:fixed;right:0;top:0;height:100vh;background: #fff; padding: 15px;">
+    @ChildContent
+</div>
+@code {
+    [Parameter] public bool IsShow { get; set; } = false;
+    [Parameter] public RenderFragment ChildContent { get; set; }
+}

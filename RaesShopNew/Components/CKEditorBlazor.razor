@@ -1,0 +1,61 @@
+﻿@inherits InputTextArea
+@inject IJSRuntime JSRuntime
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.JSInterop
+<link rel="stylesheet" href="/ckeditor/site.css" />
+<script src="/ckeditor/ckeditor.js"></script>
+<script src="/ckeditor/CKEditorInterop.js"></script>
+
+<textarea @attributes="AdditionalAttributes"
+          id="@Id"
+          class="@CssClass"
+          >@CurrentValue</textarea>
+
+
+
+@code {
+    string _id;
+
+    [Parameter]
+    public string Id
+    {
+        get => _id ?? $"CKEditor_{uid}";
+        set => _id = value;
+    }
+
+    [Parameter]
+    public string UrlToPostImage { get; set; }
+
+    readonly string uid = Guid.NewGuid().ToString().ToLower().Replace("-", "");
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+
+
+
+        if (firstRender)
+            await JSRuntime.InvokeVoidAsync("CKEditorInterop.init", Id, UrlToPostImage, DotNetObjectReference.Create(this));
+
+        await base.OnAfterRenderAsync(firstRender);
+
+
+
+
+
+    }
+
+    [JSInvokable]
+    public Task EditorDataChanged(string data)
+    {
+        CurrentValue = data;
+
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        JSRuntime.InvokeVoidAsync("CKEditorInterop.destroy", Id);
+        base.Dispose(disposing);
+    }
+}

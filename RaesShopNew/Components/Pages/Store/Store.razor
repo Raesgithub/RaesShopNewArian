@@ -1,0 +1,952 @@
+﻿@page "/stores"
+@rendermode InteractiveServer
+@using RaesShopNew.Components
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+
+<PageTitle>مدیریت فروشگاه</PageTitle>
+
+<div class="store-management">
+    <!-- هدر صفحه -->
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h3 class="page-title">
+                    <i class="bi bi-shop me-2"></i>
+                    فروشگاه من
+                </h3>
+                <p class="text-muted mb-0">
+                    مدیریت محصولات فروشگاه
+                </p>
+            </div>
+
+            <a onclick="window.location.href='stores/add'" class="btn btn-primary btn-add-product">
+                <i class="bi bi-plus-circle me-2"></i>
+                افزودن محصول جدید
+            </a>
+        </div>
+    </div>
+
+    <!-- کارت آمار -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="stat-card stat-card-primary">
+                <div class="stat-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor"
+                         viewBox="0 0 24 24">
+                        <path d="M21 7.5l-9-4.5-9 4.5v9l9 4.5 9-4.5v-9zM12 4.15l6.74 3.37L12 10.9 5.26 7.52 12 4.15zm-7 5.05l6 3v6.38l-6-3v-6.38zm8 9.38V12.2l6-3v6.38l-6 3z" />
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <h4>@TotalProducts</h4>
+                    <p>کل محصولات</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card stat-card-success">
+                <div class="stat-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor"
+                         viewBox="0 0 24 24">
+                        <path d="M12 2a10 10 0 1 0 .001 20.001A10 10 0 0 0 12 2zm-1 14l-4-4 1.41-1.41L11 12.17l4.59-4.58L17 9l-6 7z" />
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <h4>@ActiveProducts</h4>
+                    <p>محصولات فعال</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card stat-card-warning">
+                <div class="stat-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor"
+                         viewBox="0 0 24 24">
+                        <path d="M13 3v2.06c2.83.47 5 2.48 5 5.44 0 3.31-2.69 5.08-6 5.45v3.05h-2v-3.03c-3.19-.34-5.91-2.21-5.99-5.65h2.02c.09 2.25 1.99 3.53 3.97 3.87V8.81C7.28 8.38 5 6.74 5 4.21 5 1.41 7.5 0 11 0c3.36 0 5.73 1.62 5.97 4.25h-2.02c-.2-1.62-1.73-2.48-3.95-2.66V3h2zM11 6.05v4.45c1.95-.29 4-.92 4-3.08 0-1.92-1.62-3.07-4-3.37zm-2 6.8v4.71c-2.11-.29-4-1.33-4-3.26 0-2.07 2.36-3.02 4-3.45z" />
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <h4>@TotalInventory.ToString("N0")</h4>
+                    <p>موجودی کل</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- فیلتر و جستجو -->
+    <div class="card filter-card mb-4">
+        <div class="card-body">
+            <EditForm Model="FilterModel" Enhance OnSubmit="ApplyFilters" FormName="f1">
+
+                <div class="row g-3 align-items-end">
+
+                    <div class="col-md-4">
+                        <label class="form-label">جستجو</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="bi bi-search"></i>
+                            </span>
+                            <InputText type="text"
+                                       class="form-control"
+                                       placeholder="جستجوی نام محصول..."
+                                       @bind-Value="FilterModel.SearchTerm" />
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">وضعیت</label>
+                        <InputSelect class="form-select" @bind-Value="FilterModel.StatusFilter">
+                            <option value="">همه</option>
+                            <option value="active">فعال</option>
+                            <option value="inactive">غیرفعال</option>
+                        </InputSelect>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">مرتب‌سازی</label>
+                        <InputSelect class="form-select" @bind-Value="FilterModel.SortBy">
+                            <option value="newest">جدیدترین</option>
+                            <option value="oldest">قدیمی‌ترین</option>
+                            <option value="price-high">قیمت (بیشترین)</option>
+                            <option value="price-low">قیمت (کمترین)</option>
+                            <option value="name">نام</option>
+                        </InputSelect>
+                    </div>
+
+                    <div class="col-md-2">
+                        <button class="btn btn-outline-success w-50" type="submit">
+                            <i class="bi bi-search"></i>
+                            جستجو
+                        </button>
+
+                        <button class="btn btn-outline-secondary w-50" type="button" @onclick="ResetFilters">
+                            <i class="bi bi-arrow-clockwise"></i>
+                            بازنشانی
+                        </button>
+                    </div>
+
+                </div>
+
+            </EditForm>
+
+        </div>
+    </div>
+
+    <!-- لیست محصولات -->
+    <div class="card">
+        <div class="card-body">
+            @if (IsLoading)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">در حال بارگذاری...</span>
+                    </div>
+                    <p class="text-muted mt-2">در حال دریافت اطلاعات...</p>
+                </div>
+            }
+            else if (FilteredProducts.Count == 0)
+            {
+                <div class="text-center py-5">
+                    <i class="bi bi-inbox display-1 text-muted"></i>
+                    <h5 class="mt-3">محصولی یافت نشد</h5>
+                    <p class="text-muted">هیچ محصولی مطابق با جستجوی شما یافت نشد</p>
+                    @if (!string.IsNullOrEmpty(SearchTerm))
+                    {
+                        <button class="btn btn-outline-primary mt-2" @onclick="ResetFilters">
+                            نمایش همه محصولات
+                        </button>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>تصویر</th>
+                                <th>نام محصول</th>
+                                <th>قیمت</th>
+                                <th>موجودی</th>
+                                <th>وضعیت</th>
+                                <th>تاریخ ایجاد</th>
+                                <th class="text-center">عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var product in PagedProducts)
+                            {
+                                <tr>
+                                    <td>@product.Id</td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(product.ImageUrl) || (product.ImageUrls != null && product.ImageUrls.Any()))
+                                        {
+                                            <img src="@GetProductImageUrl(product)"
+                                                 alt="@product.Name"
+                                                 class="product-thumb"
+                                                 onerror="this.onerror=null; this.src='/images/no-image.png';" />
+                                        }
+                                        else
+                                        {
+                                            <div class="no-image">
+                                                <i class="bi bi-image"></i>
+                                            </div>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="product-info">
+                                            <strong>@product.Name</strong>
+                                            @if (product.Tags?.Count > 0)
+                                            {
+                                                <div class="tags">
+                                                    @foreach (var tag in product.Tags.Take(2))
+                                                    {
+                                                        <span class="badge bg-light text-dark">@tag</span>
+                                                    }
+                                                    @if (product.Tags.Count > 2)
+                                                    {
+                                                        <span class="badge bg-light text-dark">+@(product.Tags.Count - 2)</span>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+
+                                            <span class="ms-2">
+                                                @product.Price تومان
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="inventory-bar">
+                                                <div class="progress" style="height: 6px;">
+                                                    @{
+                                                        var percentage = product.Quantity > 0 ?
+                                                        Math.Min(100, (product.Quantity / 100.0) * 100) : 0;
+                                                    }
+                                                    <div class="progress-bar @(product.Quantity > 10 ? "bg-success" : "bg-warning")"
+                                                         style="width: @(percentage)%"></div>
+                                                </div>
+                                            </div>
+                                            <span class="ms-2">
+                                                @product.Quantity عدد
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge @(product.IsActive ? "active" : "inactive")">
+                                            @(product.IsActive ? "فعال" : "غیرفعال")
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @product.CreatedAt.ToString("yyyy/MM/dd")
+                                    </td>
+                                    <td>
+                                        <div class="actions">
+                                            <button class="btn btn-sm btn-outline-primary"
+                                                    @onclick="@(() => NavigateToEdit(product.Id))"
+                                                    title="ویرایش">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                     class="bi bi-pencil" viewBox="0 0 16 16">
+                                                    <path d="M12.146.854a.5.5 0 0 1 .708 0l2.292 2.292a.5.5 0 0 1 0 .708l-9.439 9.439-3.182.795a.5.5 0 0 1-.606-.606l.795-3.182 9.439-9.439z" />
+                                                    <path fill-rule="evenodd" d="M11.207 2.5 13.5 4.793 12.793 5.5 10.5 3.207 11.207 2.5z" />
+                                                </svg>
+                                            </button>
+
+                                            <button class="btn btn-sm btn-outline-danger"
+                                                    @onclick="@(() => ShowDeleteModal(product))"
+                                                    title="حذف">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                     class="bi bi-trash" viewBox="0 0 16 16">
+                                                    <path d="M5.5 5.5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5zm2.5.5a.5.5 0 0 0-1 0v7a.5.5 0 0 0 1 0v-7z" />
+                                                    <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1 0-2H6V1a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1h3.5a1 1 0 0 1 1 1zM6 1v1h4V1H6z" />
+                                                </svg>
+                                            </button>
+                                        </div>
+
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- صفحه‌بندی -->
+                @if (TotalPages > 1)
+                {
+                    <nav aria-label="صفحه‌بندی">
+                        <ul class="pagination justify-content-center">
+                            <li class="page-item @(CurrentPage == 1 ? "disabled" : "")">
+                                <button class="page-link" @onclick="@(() => ChangePage(CurrentPage - 1))">
+                                    <i class="bi bi-chevron-right"></i>
+                                </button>
+                            </li>
+
+                            @for (int i = 1; i <= TotalPages; i++)
+                            {
+                                if (i == 1 || i == TotalPages || (i >= CurrentPage - 2 && i <= CurrentPage + 2))
+                                {
+                                    <li class="page-item @(i == CurrentPage ? "active" : "")">
+                                        <button class="page-link" @onclick="@(() => ChangePage(i))">
+                                            @i
+                                        </button>
+                                    </li>
+                                }
+                                else if (i == CurrentPage - 3 || i == CurrentPage + 3)
+                                {
+                                    <li class="page-item disabled">
+                                        <span class="page-link">...</span>
+                                    </li>
+                                }
+                            }
+
+                            <li class="page-item @(CurrentPage == TotalPages ? "disabled" : "")">
+                                <button class="page-link" @onclick="@(() => ChangePage(CurrentPage + 1))">
+                                    <i class="bi bi-chevron-left"></i>
+                                </button>
+                            </li>
+                        </ul>
+                    </nav>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+<!-- مودال تایید حذف -->
+@if (ProductToDelete != null)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);"
+         @onclick="CloseDeleteModal">
+        <div class="modal-dialog modal-dialog-centered" @onclick:stopPropagation>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-exclamation-triangle text-danger me-2"></i>
+                        تایید حذف محصول
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseDeleteModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center">
+                        <i class="bi bi-trash display-4 text-danger mb-3"></i>
+                        <h5>آیا از حذف این محصول اطمینان دارید؟</h5>
+                        <p class="text-muted">
+                            محصول <strong>@ProductToDelete.Name</strong> با کد @ProductToDelete.Id
+                            برای همیشه حذف خواهد شد.
+                        </p>
+                        <p class="text-danger small">
+                            <i class="bi bi-info-circle"></i>
+                            این عمل قابل بازگشت نیست.
+                        </p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-secondary"
+                            @onclick="CloseDeleteModal">
+                        انصراف
+                    </button>
+                    <button type="button"
+                            class="btn btn-danger"
+                            @onclick="ConfirmDelete"
+                            disabled="@IsDeleting">
+                        @if (IsDeleting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        حذف محصول
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    public class FilterShop
+    {
+        public string SearchTerm { get; set; } = null;
+        public string StatusFilter { get; set; } = null;
+        public string SortBy { get; set; } = null;
+    }
+
+    [SupplyParameterFromForm] public FilterShop FilterModel { get; set; } = new();
+    [Inject]
+    private IConfiguration Config { get; set; }
+    private List<ProductDto> Products = new();
+    private List<ProductDto> FilteredProducts = new();
+    private ProductDto? ProductToDelete = null;
+    private bool IsLoading = true;
+    private bool IsDeleting = false;
+
+    // فیلترها
+    private string SearchTerm = string.Empty;
+    private string StatusFilter = string.Empty;
+    private string SortBy = "newest";
+
+    // صفحه‌بندی
+    private const int PageSize = 10;
+    private int CurrentPage = 1;
+    private int TotalPages = 1;
+
+    // آمار
+    private int TotalProducts = 0;
+    private int ActiveProducts = 0;
+    private int TotalInventory = 0;
+
+    private List<ProductDto> PagedProducts => FilteredProducts
+        .Skip((CurrentPage - 1) * PageSize)
+        .Take(PageSize)
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProducts();
+    }
+
+    private async Task LoadProducts()
+    {
+        IsLoading = true;
+        try
+        {
+            var response = await Http.GetFromJsonAsync<ApiResponse<List<ProductDto>>>("api/products");
+            if (response?.Success == true && response.Data != null)
+            {
+                Products = response.Data;
+                ApplyFilters();
+                CalculateStatistics();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading products: {ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private string GetProductImageUrl(ProductDto product)
+    {
+        // اولویت 1: اگر ImageUrls وجود دارد و اولین تصویر را دارد
+        if (product.ImageUrls != null && product.ImageUrls.Any())
+        {
+            var firstImage = product.ImageUrls.First();
+            return GetFullImageUrl(firstImage);
+        }
+
+        // اولویت 2: اگر ImageUrl وجود دارد
+        if (!string.IsNullOrEmpty(product.ImageUrl))
+        {
+            return GetFullImageUrl(product.ImageUrl);
+        }
+
+        // اولویت 3: تصویر پیش‌فرض
+        return "/images/no-image.png";
+    }
+
+
+    private string GetFullImageUrl(string? imageUrl)
+    {
+        if (string.IsNullOrEmpty(imageUrl))
+            return "/images/no-image.png";
+
+        if (imageUrl.StartsWith("http://") || imageUrl.StartsWith("https://"))
+            return imageUrl;
+
+        if (imageUrl.StartsWith("/"))
+            return imageUrl;
+
+        if (imageUrl.StartsWith("sm-") || imageUrl.StartsWith("md-") || imageUrl.StartsWith("lg-"))
+            return $"/images/cats/{imageUrl}";
+
+        if (imageUrl.StartsWith("xl-"))
+            return $"/uploads/products/{imageUrl}";
+
+        if (Path.HasExtension(imageUrl))
+            return $"/uploads/products/{imageUrl}";
+
+        return $"/uploads/products/xl-{imageUrl}";
+    }
+
+    private void ApplyFilters()
+    {
+        // همیشه از یک کپی تازه شروع کن
+        FilteredProducts = Products.ToList();
+
+        // جستجو
+        if (!string.IsNullOrWhiteSpace(FilterModel.SearchTerm))
+        {
+            var term = FilterModel.SearchTerm.Trim();
+
+            FilteredProducts = FilteredProducts
+                .Where(p =>
+                    (p.Name?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (p.Description?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (p.Tags?.Any(t => t.Contains(term, StringComparison.OrdinalIgnoreCase)) ?? false)
+                )
+                .ToList();
+        }
+
+        // فیلتر وضعیت
+        if (!string.IsNullOrWhiteSpace(FilterModel.StatusFilter))
+        {
+            FilteredProducts = FilteredProducts
+                .Where(p => FilterModel.StatusFilter == "active" ? p.IsActive : !p.IsActive)
+                .ToList();
+        }
+
+        // مرتب‌سازی
+        FilteredProducts = FilterModel.SortBy switch
+        {
+            "newest" => FilteredProducts.OrderByDescending(p => p.CreatedAt).ToList(),
+            "oldest" => FilteredProducts.OrderBy(p => p.CreatedAt).ToList(),
+            "price-high" => FilteredProducts.OrderByDescending(p => p.Price).ToList(),
+            "price-low" => FilteredProducts.OrderBy(p => p.Price).ToList(),
+            "name" => FilteredProducts.OrderBy(p => p.Name).ToList(),
+            _ => FilteredProducts.OrderByDescending(p => p.CreatedAt).ToList()
+        };
+
+        // صفحه‌بندی
+        TotalPages = Math.Max(1,
+            (int)Math.Ceiling(FilteredProducts.Count / (double)PageSize));
+
+        CurrentPage = Math.Max(1, Math.Min(CurrentPage, TotalPages));
+
+        StateHasChanged(); // برای re-render
+    }
+
+
+    private void CalculateStatistics()
+    {
+        TotalProducts = Products.Count;
+        ActiveProducts = Products.Count(p => p.IsActive);
+        TotalInventory = Products.Sum(p => p.Quantity);
+    }
+
+    private void ResetFilters()
+    {
+        FilterModel = new FilterShop
+        {
+            SearchTerm = "",
+            StatusFilter = "",
+            SortBy = "newest"
+        };
+
+        CurrentPage = 1;
+
+        ApplyFilters();
+    }
+
+    private void ChangePage(int page)
+    {
+        if (page >= 1 && page <= TotalPages)
+        {
+            CurrentPage = page;
+        }
+    }
+
+    private void NavigateToEdit(int productId)
+    {
+        NavigationManager.NavigateTo($"/stores/edit/{productId}", true);  // ✅ تغییر این خط
+    }
+    private void ShowDeleteModal(ProductDto product)
+    {
+        ProductToDelete = product;
+    }
+
+    private void CloseDeleteModal()
+    {
+        ProductToDelete = null;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (ProductToDelete == null) return;
+
+        IsDeleting = true;
+        try
+        {
+            var response = await Http.DeleteAsync($"api/products/{ProductToDelete.Id}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                // حذف از لیست
+                Products.RemoveAll(p => p.Id == ProductToDelete.Id);
+                ApplyFilters();
+                CalculateStatistics();
+                CloseDeleteModal();
+
+                // نمایش پیام موفقیت (می‌توانید از toast استفاده کنید)
+                Console.WriteLine("محصول با موفقیت حذف شد");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting product: {ex.Message}");
+        }
+        finally
+        {
+            IsDeleting = false;
+        }
+    }
+
+    // کلاس‌های DTO (مشابه صفحه قبل)
+    public class ProductDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public List<int> CategoryIds { get; set; } = new List<int>();
+        public decimal Price { get; set; }
+        public int Quantity { get; set; }
+        public string Description { get; set; } = string.Empty;
+        public string? ImageUrl { get; set; }
+        public List<string>? ImageUrls { get; set; } = new();
+        public List<string> Tags { get; set; } = new List<string>();
+        public bool IsActive { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+
+    public class ApiResponse<T>
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public T? Data { get; set; }
+    }
+}
+
+<style>
+    .store-management {
+        padding: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+    }
+
+    .page-title {
+        color: white;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .btn-add-product {
+        background: rgba(255, 255, 255, 0.2);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        font-weight: 600;
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        transition: all 0.3s;
+    }
+
+        .btn-add-product:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: white;
+            transform: translateY(-2px);
+        }
+
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        transition: transform 0.3s;
+    }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+        }
+
+    .stat-card-primary {
+        border-right: 4px solid #667eea;
+    }
+
+    .stat-card-success {
+        border-right: 4px solid #10b981;
+    }
+
+    .stat-card-warning {
+        border-right: 4px solid #f59e0b;
+    }
+
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #667eea20, #764ba220);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: 1rem;
+    }
+
+    .stat-card-primary .stat-icon {
+        background: linear-gradient(135deg, #667eea20, #764ba220);
+        color: #667eea;
+    }
+
+    .stat-card-success .stat-icon {
+        background: linear-gradient(135deg, #10b98120, #05966920);
+        color: #10b981;
+    }
+
+    .stat-card-warning .stat-icon {
+        background: linear-gradient(135deg, #f59e0b20, #d9770620);
+        color: #f59e0b;
+    }
+
+    .stat-icon i {
+        font-size: 1.8rem;
+    }
+
+    .stat-info h4 {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin-bottom: 0.2rem;
+        color: #1e293b;
+    }
+
+    .stat-info p {
+        color: #64748b;
+        margin: 0;
+        font-size: 0.9rem;
+    }
+
+    .filter-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+        .filter-card .card-body {
+            padding: 1.5rem;
+        }
+
+    .product-thumb {
+        width: 50px;
+        height: 50px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 2px solid #f1f5f9;
+    }
+
+    .no-image {
+        width: 50px;
+        height: 50px;
+        background: #f8fafc;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #94a3b8;
+        border: 2px dashed #e2e8f0;
+    }
+
+    .product-info .tags {
+        margin-top: 4px;
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+    }
+
+        .product-info .tags .badge {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+    .price {
+        font-weight: 700;
+        color: #1e293b;
+    }
+
+        .price small {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-right: 4px;
+        }
+
+    .inventory-bar {
+        width: 80px;
+    }
+
+    .progress {
+        background-color: #f1f5f9;
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .progress-bar {
+        border-radius: 3px;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+
+        .status-badge.active {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-badge.inactive {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+
+    .actions {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+    }
+
+        .actions .btn {
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .actions .btn-outline-primary:hover {
+            background-color: #3b82f6;
+            border-color: #3b82f6;
+            color: white;
+        }
+
+        .actions .btn-outline-danger:hover {
+            background-color: #ef4444;
+            border-color: #ef4444;
+            color: white;
+        }
+
+    table {
+        --bs-table-hover-bg: #f8fafc;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    thead th {
+        background-color: #f8fafc;
+        border-bottom: 2px solid #e2e8f0;
+        font-weight: 600;
+        color: #475569;
+        padding: 1rem;
+        white-space: nowrap;
+    }
+
+    tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    tbody tr:hover {
+        background-color: #f8fafc;
+    }
+
+    tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .pagination {
+        margin-top: 2rem;
+    }
+
+    .page-item .page-link {
+        color: #475569;
+        border: 1px solid #e2e8f0;
+        margin: 0 4px;
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+
+    .page-item.active .page-link {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-color: #667eea;
+        color: white;
+    }
+
+    .page-item .page-link:hover {
+        background-color: #f1f5f9;
+        border-color: #cbd5e1;
+    }
+
+    .modal-content {
+        border-radius: 15px;
+        border: none;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    }
+
+    .modal-header {
+        border-bottom: 1px solid #f1f5f9;
+        padding: 1.5rem;
+    }
+
+    .modal-body {
+        padding: 2rem;
+    }
+
+    .modal-footer {
+        border-top: 1px solid #f1f5f9;
+        padding: 1.5rem;
+    }
+
+    @@media (max-width: 768px) {
+        .store-management {
+            padding: 10px;
+        }
+
+        .page-header {
+            padding: 1.5rem;
+        }
+
+        .stat-card {
+            flex-direction: column;
+            text-align: center;
+            padding: 1rem;
+        }
+
+        .stat-icon {
+            margin-left: 0;
+            margin-bottom: 1rem;
+        }
+
+        table {
+            display: block;
+            overflow-x: auto;
+        }
+
+        .actions {
+            flex-direction: column;
+            gap: 4px;
+        }
+
+            .actions .btn {
+                width: 32px;
+                height: 32px;
+            }
+    }
+</style>

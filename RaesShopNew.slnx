@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Application/Application.csproj" Id="7026ab1d-34d2-4f20-ba0b-6b222aa076d1" />
+  <Project Path="Domain/Domain.csproj" Id="5a619014-0686-4de4-a8eb-3b154d412b9d" />
+  <Project Path="RaesShopNew/RaesShopNew.csproj" />
+</Solution>

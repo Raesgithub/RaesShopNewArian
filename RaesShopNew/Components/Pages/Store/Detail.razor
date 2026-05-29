@@ -1,0 +1,1107 @@
+﻿@page "/stores/add"
+@page "/stores/edit/{id:int}"
+@using Application.Dtos
+@using Application.Services
+@using Microsoft.Extensions.Caching.Memory
+@using RaesShopNew.Components
+@using System.Net.Http.Headers
+@using System.ComponentModel.DataAnnotations
+@inject HttpClient Http
+@rendermode InteractiveServer
+
+@{
+    // تشخیص اینکه در حال ویرایش هستیم یا افزودن
+    var isEdit = id > 0;
+    var formName = isEdit ? "ProductEditForm" : "ProductAddForm";
+}
+<EditForm Model="@ProductModel"
+          OnValidSubmit="@HandleSubmit"
+          @onsubmit:preventDefault
+          FormName="@formName">
+
+    <DataAnnotationsValidator />
+    <ValidationSummary class="alert alert-danger" />
+
+    <div class="row g-4">
+        <!-- g-4 برای فاصله بین ستون‌ها -->
+        <!-- ستون سمت چپ (تصویر و دسته‌بندی) -->
+        <div class="col-md-4">
+            <div class="mb-3 border p-3 rounded shadow-sm bg-white">
+                <label class="form-label fw-semibold">
+                    <i class="bi bi-images me-1"></i>
+                    تصاویر محصول
+                </label>
+
+                <!-- گالری تصاویر موجود + حذف -->
+                <div class="gallery-preview mb-3">
+                    @if (ProductModel.ImageUrls.Any() || _selectedImageData.Any())
+                    {
+                        <div class="row g-2">
+                            <!-- تصاویر موجود از سرور -->
+                            @for (int i = 0; i < ProductModel.ImageUrls.Count; i++)
+                            {
+                                <div class="col-6 col-sm-4 col-md-3 position-relative">
+                                    <img src="@ProductModel.ImageUrls[i]" class="img-thumbnail w-100" style="height: 120px; object-fit: cover;" />
+                                    <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1"
+                                            @onclick="() => RemoveImage(i)">
+                                        <i class="bi bi-x"></i>
+                                    </button>
+                                </div>
+                            }
+
+                            <!-- پیش‌نمایش تصاویر جدید (Base64) -->
+                            @for (int i = 0; i < _selectedImageData.Count; i++)
+                            {
+                                var image = _selectedImageData[i];
+                                <div class="col-6 col-sm-4 col-md-3 position-relative">
+                                    <img src="@image.PreviewUrl" class="img-thumbnail w-100" style="height: 120px; object-fit: cover;" />
+                                    <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1"
+                                            @onclick="() => RemoveNewImage(i)">
+                                        <i class="bi bi-x"></i>
+                                    </button>
+                                    <span class="position-absolute bottom-0 start-0 m-1 badge bg-info" style="font-size: 10px;">
+                                        جدید
+                                    </span>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-muted text-center p-3">هیچ تصویری انتخاب نشده است</div>
+                    }
+                </div>
+
+                <!-- ناحیه آپلود چندفایله -->
+                <div class="file-upload-multiple">
+                    <label class="upload-label" for="@FileInputId">
+                        <i class="bi bi-cloud-arrow-up"></i>
+                        انتخاب تصاویر (چندتایی)
+                        <InputFile OnChange="HandleMultipleImagesSelected"
+                                   accept="image/*"
+                                   multiple
+                                   class="d-none"
+                                   id="@FileInputId" />
+                    </label>
+                    <div class="form-text">حداکثر 2 مگابایت هر تصویر - فرمت‌های مجاز: jpg, png, webp</div>
+                </div>
+
+                @if (_imageUploadErrors.Any())
+                {
+                    <div class="alert alert-danger mt-2">
+                        @foreach (var err in _imageUploadErrors)
+                        {
+                            <div>@err</div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <!-- فاصله بین تصویر و دسته‌بندی -->
+            <div class="mb-3">
+                <CategoryComponent @ref="catComponent" SelectedCats="@ProductModel.CategoryIds" />
+            </div>
+        </div>
+
+        <!-- ستون سمت راست (اطلاعات محصول) -->
+        <div class="col-md-8">
+            <!-- خطاها -->
+            @if (_errorMessage != null)
+            {
+                <div class="alert alert-danger mb-4 p-3">
+                    <!-- اضافه کردن padding و margin -->
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    @_errorMessage
+                </div>
+            }
+
+            <!-- نام محصول -->
+            <div class="mb-4 p-3 border rounded shadow-sm bg-white">
+                <!-- کادر، padding، گرد کردن گوشه‌ها و سایه -->
+                <label class="form-label fw-semibold">
+                    <i class="bi bi-tag me-1"></i>
+                    نام محصول *
+                </label>
+                <InputText class="form-control"
+                           @bind-Value="ProductModel.Name"
+                           placeholder="نام محصول را وارد کنید" />
+                <ValidationMessage For="@(() => ProductModel.Name)" />
+            </div>
+
+
+            <!-- قیمت و موجودی -->
+            <div class="mb-4 p-3 border rounded shadow-sm bg-white row g-3">
+                <!-- کادر، padding، گرد کردن گوشه‌ها و سایه، و row برای چیدمان -->
+                <!-- قیمت -->
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">
+                        <i class="bi bi-currency-dollar me-1"></i>
+                        قیمت (تومان) *
+                    </label>
+                    <div class="input-group">
+                        <InputNumber class="form-control" @bind-Value="ProductModel.Price" />
+                        <span class="input-group-text">تومان</span>
+                    </div>
+                    <ValidationMessage For="@(() => ProductModel.Price)" />
+                </div>
+
+                <!-- موجودی -->
+                @if (ShowStock)
+                {
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-box me-1"></i>
+                            موجودی
+                        </label>
+                        <InputNumber class="form-control"
+                                     @bind-Value="ProductModel.Quantity" />
+                    </div>
+                }
+            </div>
+            <!-- چکیده (توضیح کوتاه) -->
+            <div class="mb-4 p-3 border rounded shadow-sm bg-white">
+                <label class="form-label fw-semibold">
+                    <i class="bi bi-file-text me-1"></i>
+                    چکیده (توضیح کوتاه)
+                </label>
+                <InputTextArea class="form-control"
+                               @bind-Value="ProductModel.Chekideh"
+                               rows="2"
+                               placeholder="یک توضیح مختصر و مفید برای محصول وارد کنید..." />
+                <ValidationMessage For="@(() => ProductModel.Chekideh)" />
+                <div class="form-text text-muted small">حداکثر 150 کاراکتر (اختیاری)</div>
+            </div>
+            <!-- برچسب‌ها (Tags) -->
+            <div class="mb-4 p-3 border rounded shadow-sm bg-white">
+                <!-- کادر، padding، گرد کردن گوشه‌ها و سایه -->
+                <label class="form-label fw-semibold">
+                    <i class="bi bi-tags me-1"></i>
+                    برچسب‌ها (Tags)
+                </label>
+
+                <!-- نمایش تگ‌های اضافه شده -->
+                @if (ProductModel.Tags.Count > 0)
+                {
+                    <div class="tags-container mb-2">
+                        @foreach (var tag in ProductModel.Tags)
+                        {
+                            <span class="badge bg-primary tag-badge">
+                                @tag
+                                <button type="button"
+                                        class="btn-close btn-close-white tag-remove"
+                                        @onclick="@(() => RemoveTag(tag))"
+                                        aria-label="حذف">
+                                </button>
+                            </span>
+                        }
+                    </div>
+                }
+
+                <!-- فیلد ورود تگ جدید -->
+                <div class="input-group">
+                    <InputText class="form-control"
+                               @bind-Value="NewTag"
+                               @onkeydown="HandleTagKeyDown"
+                               placeholder="برچسب را وارد کنید و Enter بزنید" />
+                    <button type="button"
+                            class="btn btn-outline-primary"
+                            @onclick="AddTag">
+                        <div class="stat-icon saving-indicator">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" class="bi bi-plus" viewBox="0 0 16 16">
+                                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
+                            </svg>
+
+                        </div>
+
+                    </button>
+                </div>
+            </div>
+            <div class="form-text text-muted small">
+                برچسب‌ها را وارد کرده و Enter بزنید یا روی دکمه + کلیک کنید
+            </div>
+
+
+            <!-- توضیحات -->
+            <div class="mb-4 p-3 border rounded shadow-sm bg-white">
+                <!-- کادر، padding، گرد کردن گوشه‌ها و سایه -->
+                <label class="form-label fw-semibold">
+                    <i class="bi bi-card-text me-1"></i>
+                    توضیحات
+                </label>
+                <CKEditorBlazor DisplayName="ProductModel.Description" @bind-Value="ProductModel.Description"
+                                UrlToPostImage="/api/UploadFile/uploadimage">
+                </CKEditorBlazor>
+
+
+                
+            </div>
+
+
+            <!-- تصویر محصول -->
+            <!-- وضعیت فعال -->
+            <div class="mb-4 p-3 border rounded shadow-sm bg-white">
+                <!-- کادر، padding، گرد کردن گوشه‌ها و سایه -->
+                <div class="form-check form-switch">
+                    <InputCheckbox class="form-check-input"
+                                   @bind-Value="ProductModel.IsActive"
+                                   id="@ActiveSwitchId" />
+                    <label class="form-check-label fw-semibold" for="@ActiveSwitchId">
+                        محصول فعال است
+                    </label>
+                </div>
+            </div>
+
+            <!-- دکمه‌های عملیات -->
+            <div class="d-flex gap-2 mt-4">
+                @if (ShowCancelButton)
+                {
+                    <button type="button"
+                            class="btn btn-outline-secondary flex-fill"
+                            @onclick="HandleCancelClick">
+                        <i class="bi bi-x-circle me-1"></i>
+                        انصراف
+                    </button>
+                }
+
+                <button type="submit"
+                        class="btn btn-success flex-fill"
+                        disabled="@IsSaving">
+                    @if (IsSaving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                        <span>در حال ذخیره...</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-check-circle me-1"></i>
+                        <span>@SubmitButtonText</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+</EditForm>
+
+
+
+@inject NavigationManager nav
+@inject IProductService productService
+@inject Application.Helpers.Cpanel.FileUpload _fileUpload
+@code {
+    public class UploadFileData
+    {
+        public string FileName { get; set; }
+        public string ContentType { get; set; }
+        public byte[] Data { get; set; }
+        public long Size { get; set; }
+        public string PreviewUrl { get; set; }
+    }
+
+     private List<UploadFileData> _selectedImageData = new();
+
+    
+    CategoryComponent catComponent { get; set; } = new();
+
+    // پارامترهای ورودی
+    public ProductDto ProductModel { get; set; } = new();
+    public bool ShowStock { get; set; } = true;
+    public bool ShowCancelButton { get; set; } = true;
+    public string SubmitButtonText { get; set; } = "ذخیره محصول";
+    [Parameter] public int? id { get; set; }  // تغییر به int?
+    //[Parameter] public EventCallback<ProductDto> OnSubmit { get; set; }
+    //[Parameter] public EventCallback OnCancel { get; set; }
+    public string OnImageUploaded { get; set; }
+
+    // داده‌های داخلی
+    private List<CategoryDto> Categories = new();
+    private IBrowserFile? _selectedImage;
+    private string? ImagePreview;
+    private bool IsSaving;
+    private string? _errorMessage;
+    private string NewTag = string.Empty;
+    private bool _isLoading = false;
+
+    // ID های یکتا برای المنت‌ها
+    private string FileInputId = $"fileInput-{Guid.NewGuid()}";
+    private string ActiveSwitchId = $"activeSwitch-{Guid.NewGuid()}";
+
+    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+
+
+    async Task<ApiResponse<ProductDto>> GetProduct(int id)
+    {
+        try
+        {
+
+
+            var pro = await productService.GetProductByIdAsync(id);
+            if (pro == null)
+                return new ApiResponse<ProductDto>
+                {
+                    Success = false,
+                    Message = "محصول یافت نشد"
+                };
+
+            // دریافت دسته‌بندی‌های محصول از سرویس مربوطه
+            var categoryIds = await productService.GetProductCategoryIdsAsync(id);
+
+            var result = new ProductDto
+            {
+                Id = pro.Id,
+                Name = pro.Name,
+                Price = pro.Price,
+                Description = pro.Description,
+                ImageUrl = pro.ImageUrl,
+                Quantity = pro.Quantity,
+                IsActive = pro.IsActive,
+                Tags = !string.IsNullOrEmpty(pro.Tags) ?
+                       pro.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList() :
+                       new List<string>(),
+                CategoryIds = categoryIds ?? new List<int>(), // مقداردهی CategoryIds
+                CreatedAt = pro.CreatedAt
+            };
+
+            return new ApiResponse<ProductDto>
+            {
+                Success = true,
+                Data = result,
+                Message = "دریافت محصول با موفقیت انجام شد"
+            };
+        }
+        catch (Exception ex)
+        {
+            return  new ApiResponse<ProductDto>
+            {
+                Success = false,
+                Message = "خطا در دریافت محصول",
+                Error = ex.Message
+            };
+        }
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        // اگر آدرس /stores/edit باشه (بدون id) => محصول جدید
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        if (uri.AbsolutePath.Equals("/stores/edit", StringComparison.OrdinalIgnoreCase))
+        {
+            id = 0;  // محصول جدید
+        }
+
+        if (id > 0)  // ویرایش
+        {
+            try
+            {
+                _isLoading = true;
+                _errorMessage = null;
+                var response = await Http.GetFromJsonAsync<ApiResponse<ProductDto>>($"api/products/{id}");
+                if (response?.Success == true && response.Data != null)
+                {
+                    var x = await GetProduct(id ?? 0);
+                    ProductModel = x.Data;
+
+                    if (!string.IsNullOrEmpty(ProductModel.ImageUrl))
+                    {
+                        ImagePreview = ProductModel.ImageUrl;
+                    }
+
+
+
+                    SubmitButtonText = "ویرایش محصول";
+                }
+                else
+                {
+                    _errorMessage = response?.Message ?? "خطا در دریافت اطلاعات محصول";
+                }
+            }
+            catch (Exception ex)
+            {
+                _errorMessage = $"خطا در ارتباط با سرور: {ex.Message}";
+            }
+            finally
+            {
+                _isLoading = false;
+            }
+        }
+        else  // افزودن محصول جدید
+        {
+            ProductModel = new ProductDto();
+            SubmitButtonText = "ذخیره محصول";
+            ImagePreview = null;
+            _selectedImage = null;
+            await LoadCategories();
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            IsSaving = true;
+            _errorMessage = null;
+
+            // دریافت دسته‌بندی‌های انتخاب شده
+            var selectedCategories = catComponent?.SelectedCategories;
+            if (selectedCategories != null && selectedCategories.Any())
+            {
+                ProductModel.CategoryIds = selectedCategories
+                    .Where(c => c.Id > 0)
+                    .Select(c => c.Id)
+                    .ToList();
+            }
+
+            // **بخش مهم: آپلود تصاویر از روی داده‌های ذخیره شده**
+            if (_selectedImageData.Any())
+            {
+                foreach (var imageData in _selectedImageData)
+                {
+                    try
+                    {
+                        var uploadResult = await _fileUpload.UploadFromBytes(
+                            imageData.Data,
+                            imageData.FileName,
+                            imageData.ContentType,
+                            "uploads/products",
+                            xlSize992px: true  // فقط یک سایز برای شروع کافیست
+                        );
+
+                        if (uploadResult.IsSucces)
+                        {
+                            ProductModel.ImageUrls.Add($"/uploads/products/xl-{uploadResult.Filename}");
+                        }
+                        else
+                        {
+                            _imageUploadErrors.Add($"خطا در آپلود {imageData.FileName}: {uploadResult.Message}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _imageUploadErrors.Add($"خطا در آپلود {imageData.FileName}: {ex.Message}");
+                    }
+                }
+
+                // پاک کردن لیست بعد از آپلود
+                _selectedImageData.Clear();
+            }
+
+            // ارسال به API
+            await SubmitToApi();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"خطا: {ex.Message}";
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    private async Task SubmitToApi()
+    {
+        try
+        {
+            HttpResponseMessage response;
+
+            if (id > 0)  // ویرایش
+            {
+                response = await Http.PutAsJsonAsync($"api/products/{id}", ProductModel);
+            }
+            else  // ایجاد
+            {
+                response = await Http.PostAsJsonAsync("api/products", ProductModel);
+            }
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ApiResponse<ProductDto>>();
+                if (result?.Success == true)
+                {
+                    NavigationManager.NavigateTo("/stores");
+                }
+                else
+                {
+                    _errorMessage = result?.Message ?? "خطا در ذخیره محصول";
+                }
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _errorMessage = $"خطا از سرور: {errorContent}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"خطا در ارتباط با سرور: {ex.Message}";
+        }
+    }
+
+    private async Task LoadCategories()
+    {
+        try
+        {
+            var response = await Http.GetFromJsonAsync<ApiResponse<List<CategoryDto>>>("api/categories");
+            if (response?.Success == true)
+            {
+                Categories = response.Data ?? new List<CategoryDto>();
+            }
+            else
+            {
+                Categories = new List<CategoryDto>();
+            }
+        }
+        catch
+        {
+            Categories = new List<CategoryDto>();
+        }
+    }
+    private void RemoveNewImage(int index)
+    {
+        if (index < _selectedImageData.Count)
+        {
+            _selectedImageData.RemoveAt(index);
+            StateHasChanged();
+        }
+    }
+    // اضافه کردن تگ جدید
+    private void AddTag()
+    {
+        if (!string.IsNullOrWhiteSpace(NewTag))
+        {
+            var tag = NewTag.Trim();
+
+            // جلوگیری از تکراری بودن تگ
+            if (!ProductModel.Tags.Contains(tag, StringComparer.OrdinalIgnoreCase))
+            {
+                ProductModel.Tags.Add(tag);
+            }
+
+            NewTag = string.Empty;
+        }
+    }
+
+    // حذف تگ
+    private void RemoveTag(string tag)
+    {
+        ProductModel.Tags.Remove(tag);
+    }
+
+
+    private async Task HandleImageSelected(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            _selectedImage = e.File;
+
+            // اعتبارسنجی
+            if (_selectedImage.Size > 2_000_000)
+            {
+                _errorMessage = "حجم فایل نباید بیشتر از 2 مگابایت باشد";
+                return;
+            }
+
+            // ایجاد پیش‌نمایش
+            var buffer = new byte[_selectedImage.Size];
+            await using var stream = _selectedImage.OpenReadStream(maxAllowedSize: 2_000_000);
+            await stream.ReadAsync(buffer);
+
+            ImagePreview = $"data:{_selectedImage.ContentType};base64,{Convert.ToBase64String(buffer)}";
+
+            // اطلاع‌رسانی به والد
+            // if (OnImageUploaded.HasDelegate)
+            //{
+            //  await OnImageUploaded.InvokeAsync(ImagePreview);
+            //}
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"خطا در بارگذاری تصویر: {ex.Message}";
+        }
+    }
+
+    private void ClearImage()
+    {
+        _selectedImage = null;
+        ImagePreview = null;
+        ProductModel.ImageUrl = null;
+    }
+
+
+
+
+
+    private async Task<string?> UploadImage(IBrowserFile file)
+    {
+        try
+        {
+            // فشرده‌سازی تصویر
+            var resizedImageFile = await file.RequestImageFileAsync("image/jpeg", 800, 600);
+
+            // ایجاد MultipartFormDataContent
+            using var content = new MultipartFormDataContent();
+
+            // ایجاد StreamContent از فایل فشرده شده
+            using var stream = resizedImageFile.OpenReadStream(maxAllowedSize: 4000000); // 4MB
+            using var fileContent = new StreamContent(stream);
+
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(resizedImageFile.ContentType);
+            content.Add(fileContent, "file", file.Name);
+
+            // ارسال درخواست
+            var response = await Http.PostAsync("api/UploadFile/uploadimagefile", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+
+                // استخراج URL از JSON با استفاده از Regex (اگر ساختار ثابت است)
+                // فرض: {"url":"https://example.com/image.jpg",...}
+                var match = System.Text.RegularExpressions.Regex.Match(jsonResponse,
+                    @"""url""\s*:\s*""([^""]+)""");
+
+                if (match.Success)
+                {
+                    return match.Groups[1].Value;
+                }
+
+                // یا اگر URL مستقیم برگردانده می‌شود
+                return jsonResponse.Trim('"');
+            }
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+    private void HandleTagKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            AddTag();
+        }
+    }
+    private async Task HandleCancelClick()
+    {
+        nav.NavigateTo("/stores");
+        //if (OnCancel.HasDelegate)
+        // {
+        //    await OnCancel.InvokeAsync();
+        //}
+
+    }
+
+    // کلاس‌های DTO
+    
+    public class CategoryDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+
+    public class ApiResponse<T>
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public T? Data { get; set; }
+        public string? Error { get; set; }
+        public List<string>? Errors { get; set; }
+    }
+    private List<IBrowserFile> _selectedImageFiles = new();
+    private List<string> _imageUploadErrors = new();
+    private async Task HandleMultipleImagesSelected(InputFileChangeEventArgs e)
+    {
+        _imageUploadErrors.Clear();
+
+        foreach (var file in e.GetMultipleFiles())
+        {
+            // اعتبارسنجی حجم
+            if (file.Size > 2_000_000)
+            {
+                _imageUploadErrors.Add($"حجم فایل {file.Name} بیشتر از 2 مگابایت است.");
+                continue;
+            }
+
+            // اعتبارسنجی فرمت
+            var ext = Path.GetExtension(file.Name).ToLower();
+            if (!new[] { ".jpg", ".jpeg", ".png", ".webp" }.Contains(ext))
+            {
+                _imageUploadErrors.Add($"فرمت فایل {file.Name} مجاز نیست.");
+                continue;
+            }
+
+            try
+            {
+                // خواندن داده‌های فایل به صورت byte[]
+                using var stream = file.OpenReadStream(maxAllowedSize: 2_000_000);
+                var buffer = new byte[file.Size];
+                await stream.ReadAsync(buffer);
+
+                // تبدیل به Base64 برای پیش‌نمایش
+                var base64String = Convert.ToBase64String(buffer);
+                var previewUrl = $"data:{file.ContentType};base64,{base64String}";
+
+                _selectedImageData.Add(new UploadFileData
+                {
+                    FileName = file.Name,
+                    ContentType = file.ContentType,
+                    Data = buffer,
+                    Size = file.Size,
+                    PreviewUrl = previewUrl  // این ویژگی را به کلاس اضافه می‌کنیم
+                });
+            }
+            catch (Exception ex)
+            {
+                _imageUploadErrors.Add($"خطا در خواندن فایل {file.Name}: {ex.Message}");
+            }
+        }
+
+        StateHasChanged();
+    }
+    private async Task RemoveImage(int index)
+    {
+        if (index < ProductModel.ImageUrls.Count)
+        {
+            // حذف از سرور (در صورت نیاز با فراخوانی API)
+            await Http.DeleteAsync($"api/upload/delete?path={Uri.EscapeDataString(ProductModel.ImageUrls[index])}");
+            ProductModel.ImageUrls.RemoveAt(index);
+            StateHasChanged();
+        }
+    }
+}
+
+<style>
+    /* استایل‌های قبلی
+    .form-label {
+        color: #4a5568;
+        font-size: 0.9rem;
+        margin-bottom: 0.4rem;
+    }
+        /* اضافه کردن انیمیشن برای تصاویر جدید */
+    .gallery-preview .col-6 {
+        animation: fadeIn 0.3s ease-in-out;
+    }
+
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    .position-relative .badge {
+        font-size: 10px;
+        padding: 2px 6px;
+    }
+
+    .form-control, .form-select {
+        border-radius: 8px;
+        border: 1px solid #e2e8f0 !important;
+        font-size: 0.9rem;
+        padding: 0.5rem 0.75rem;
+    }
+
+        .form-control:focus, .form-select:focus {
+            border-color: #4299e1;
+            box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.2);
+        }
+
+    .input-group-text {
+        background-color: #f7fafc;
+        border-color: #e2e8f0;
+        font-size: 0.85rem;
+    }
+
+    .image-preview-small {
+        position: relative;
+        width: 100px;
+        height: 100px;
+        margin: 0 auto;
+    }
+
+        .image-preview-small img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 6px;
+        }
+
+    .btn-remove-image {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+    }
+
+    .file-upload-small {
+        border: 2px dashed #cbd5e0;
+        border-radius: 8px;
+        padding: 1.5rem 1rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        background-color: #f8fafc;
+    }
+
+        .file-upload-small:hover {
+            border-color: #4299e1;
+            background-color: #ebf8ff;
+        }
+
+    .upload-label {
+        cursor: pointer;
+        color: #4a5568;
+        display: block;
+        font-size: 0.9rem;
+    }
+
+    .description-box {
+        resize: vertical;
+        min-height: 140px;
+        line-height: 1.6;
+    }
+
+    .upload-label i {
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+        display: block;
+        color: #718096;
+    }
+
+    .form-switch .form-check-input {
+        width: 2.5em;
+        height: 1.25em;
+        cursor: pointer;
+    }
+
+        .form-switch .form-check-input:checked {
+            background-color: #10b981;
+            border-color: #10b981;
+        }
+
+    .btn-success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border: none;
+        border-radius: 8px;
+        font-weight: 500;
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+    }
+
+        .btn-success:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+        }
+
+    .btn-outline-secondary {
+        border-radius: 8px;
+        font-size: 0.9rem;
+        padding: 0.5rem 1rem;
+    }
+
+    .spinner-border {
+        width: 0.9rem;
+        height: 0.9rem;
+    }
+
+    /* استایل‌های جدید برای تگ‌ها */
+    .tags-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .tag-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.85rem;
+        padding: 4px 10px;
+        border-radius: 20px;
+        background-color: #4299e1 !important;
+        color: white;
+    }
+
+    .tag-remove {
+        width: 12px;
+        height: 12px;
+        font-size: 0.6rem;
+        padding: 0;
+        margin-left: 4px;
+        opacity: 0.8;
+        cursor: pointer;
+    }
+
+        .tag-remove:hover {
+            opacity: 1;
+        }
+
+    .btn-outline-primary {
+        border-color: #4299e1;
+        color: #4299e1;
+    }
+
+        .btn-outline-primary:hover {
+            background-color: #4299e1;
+            color: white;
+        }
+</style>
+
+<style>
+    /* استایل‌ها بدون تغییر باقی می‌مانند */
+    .form-label {
+        color: #4a5568;
+        font-size: 0.9rem;
+        margin-bottom: 0.4rem;
+    }
+
+    .form-control, .form-select {
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        font-size: 0.9rem;
+        padding: 0.5rem 0.75rem;
+    }
+
+        .form-control:focus, .form-select:focus {
+            border-color: #4299e1;
+            box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.2);
+        }
+
+    .input-group-text {
+        background-color: #f7fafc;
+        border-color: #e2e8f0;
+        font-size: 0.85rem;
+    }
+
+    .image-preview-small {
+        position: relative;
+        width: 100px;
+        height: 100px;
+        margin: 0 auto;
+    }
+
+        .image-preview-small img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 6px;
+        }
+
+    .btn-remove-image {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+    }
+
+    .file-upload-small {
+        border: 2px dashed #cbd5e0;
+        border-radius: 8px;
+        padding: 1.5rem 1rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        background-color: #f8fafc;
+    }
+
+        .file-upload-small:hover {
+            border-color: #4299e1;
+            background-color: #ebf8ff;
+        }
+
+    .upload-label {
+        cursor: pointer;
+        color: #4a5568;
+        display: block;
+        font-size: 0.9rem;
+    }
+
+    .description-box {
+        resize: vertical;
+        min-height: 140px;
+        line-height: 1.6;
+    }
+
+    .upload-label i {
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+        display: block;
+        color: #718096;
+    }
+
+    .form-switch .form-check-input {
+        width: 2.5em;
+        height: 1.25em;
+        cursor: pointer;
+    }
+
+        .form-switch .form-check-input:checked {
+            background-color: #10b981;
+            border-color: #10b981;
+        }
+
+    .btn-success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border: none;
+        border-radius: 8px;
+        font-weight: 500;
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+    }
+
+        .btn-success:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+        }
+
+    .btn-outline-secondary {
+        border-radius: 8px;
+        font-size: 0.9rem;
+        padding: 0.5rem 1rem;
+    }
+
+    .spinner-border {
+        width: 0.9rem;
+        height: 0.9rem;
+    }
+</style>
+<script>
+    (function () {
+        document.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") {
+                const target = e.target;
+                if (target && target.tagName === "INPUT") {
+                    const form = target.closest("form");
+                    if (form && form.getAttribute("name") === "ProductForm") {
+                        e.preventDefault();
+                        return false;
+                    }
+                }
+            }
+        }, true);
+    })();
+</script>
