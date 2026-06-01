@@ -1,31 +1,363 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="/" >دیجی کالا</a>
+﻿@inherits LayoutComponentBase
+
+<!-- هدر بالا - فقط دکمه همبرگر -->
+<div class="top-header">
+    <div class="header-container">
+        <button class="menu-btn" id="menuBtn" onclick="toggleSidebar()">
+            <span class="menu-icon">☰</span>
+        </button>
     </div>
 </div>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
-
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="stores" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> لیست محصولات
-            </NavLink>
+<!-- سایدبار (منوی کشویی از راست) -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <div class="sidebar-logo">
+            <span>🛍️</span>
+            <span>فروشگاه</span>
         </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> فروشگاه
-            </NavLink>
-        </div>
+        <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+    </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" onclick="window.location.href='stores/add'">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> محصول جدید
-            </NavLink>
-        </div>
-
-
+    <nav class="sidebar-nav">
+        <a class="sidebar-link" href="stores">
+            <span class="sidebar-icon">📋</span>
+            <span>لیست محصولات</span>
+        </a>
+        <a class="sidebar-link" href="/">
+            <span class="sidebar-icon">🏠</span>
+            <span>فروشگاه</span>
+        </a>
+        <a class="sidebar-link" href="stores/add">
+            <span class="sidebar-icon">➕</span>
+            <span>محصول جدید</span>
+        </a>
+        <div class="sidebar-divider"></div>
+        <a class="sidebar-link" href="#" onclick="alert('پشتیبانی: ۱۹۹'); return false;">
+            <span class="sidebar-icon">🎧</span>
+            <span>پشتیبانی</span>
+        </a>
     </nav>
+
+    <div class="sidebar-footer">
+        <div class="sidebar-version">فروشگاه آنلاین</div>
+    </div>
 </div>
 
+<!-- محتوای اصلی -->
+<div class="main-content">
+    <div class="content-wrapper">
+        @Body
+    </div>
+</div>
+
+<style>
+    /* ============================================================
+           سایدبار مدرن - باز و بسته شدن از راست صفحه
+           بدون هیچ فضای بنفش
+        ============================================================ */
+
+    :root {
+        --orange: #e85d04;
+        --orange-dark: #bb3e03;
+        --orange-light: #ffb347;
+        --orange-soft: #fef3e2;
+        --text-dark: #2d2a24;
+        --text-gray: #78716c;
+        --border-light: #f0e0d0;
+        --white: #ffffff;
+        --sidebar-width: 280px;
+    }
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        background: #f5f5f0;
+        font-family: 'Segoe UI', 'Inter', Tahoma, sans-serif;
+    }
+
+    /* ========== هدر بالا - فقط دکمه همبرگر ========== */
+    .top-header {
+        background: var(--white);
+        border-bottom: 1px solid var(--border-light);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        backdrop-filter: blur(8px);
+        background: rgba(255,255,255,0.96);
+        box-shadow: 0 1px 8px rgba(0,0,0,0.02);
+    }
+
+    .header-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 12px 24px;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+    }
+
+    /* دکمه همبرگر */
+    .menu-btn {
+        background: var(--orange-soft);
+        border: none;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+        .menu-btn:hover {
+            background: #fde6cc;
+            transform: scale(0.95);
+        }
+
+    .menu-icon {
+        font-size: 24px;
+        color: var(--orange);
+        font-weight: 500;
+    }
+
+    /* ========== سایدبار (منوی کشویی از راست) ========== */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        right: -320px;
+        bottom: 0;
+        width: var(--sidebar-width);
+        background: linear-gradient(165deg, var(--white) 0%, #fefaf5 100%);
+        box-shadow: -5px 0 25px rgba(0,0,0,0.1);
+        transition: right 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+        z-index: 1001;
+        display: flex;
+        flex-direction: column;
+        border-left: 1px solid var(--border-light);
+    }
+
+        .sidebar.open {
+            right: 0;
+        }
+
+    /* اوورلی پشت سایدبار */
+    .sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(3px);
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+
+        .sidebar-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+    /* هدر سایدبار */
+    .sidebar-header {
+        padding: 24px 20px;
+        border-bottom: 2px solid var(--border-light);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: linear-gradient(135deg, #fff9f0, var(--white));
+    }
+
+    .sidebar-logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 1.2rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, var(--orange), var(--orange-light));
+        background-clip: text;
+        -webkit-background-clip: text;
+        color: transparent;
+    }
+
+        .sidebar-logo span:first-child {
+            font-size: 1.5rem;
+        }
+
+    .sidebar-close {
+        background: #f0ece6;
+        border: none;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        font-size: 16px;
+        cursor: pointer;
+        color: #666;
+        transition: all 0.25s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+        .sidebar-close:hover {
+            background: var(--orange);
+            color: white;
+            transform: rotate(90deg);
+        }
+
+    /* آیتم‌های منو */
+    .sidebar-nav {
+        flex: 1;
+        padding: 20px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .sidebar-link {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 12px 16px;
+        border-radius: 16px;
+        color: var(--text-dark);
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.25s;
+        font-size: 1rem;
+        cursor: pointer;
+    }
+
+        .sidebar-link:hover {
+            background: var(--orange-soft);
+            color: var(--orange);
+            transform: translateX(-5px);
+        }
+
+    .sidebar-icon {
+        font-size: 1.2rem;
+        width: 28px;
+        text-align: center;
+    }
+
+    .sidebar-divider {
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--border-light), transparent);
+        margin: 16px 0;
+    }
+
+    /* فوتر سایدبار */
+    .sidebar-footer {
+        padding: 20px;
+        border-top: 1px solid var(--border-light);
+        text-align: center;
+    }
+
+    .sidebar-version {
+        font-size: 0.75rem;
+        color: var(--text-gray);
+    }
+
+    /* ========== محتوای اصلی ========== */
+    .main-content {
+        flex: 1;
+        max-width: 1400px;
+        margin: 0 auto;
+        width: 100%;
+    }
+
+    .content-wrapper {
+        padding: 24px;
+    }
+
+    /* ========== ریسپانسیو ========== */
+    @@media (max-width: 768px) {
+        .header-container {
+            padding: 10px 16px;
+        }
+
+        .menu-btn {
+            width: 42px;
+            height: 42px;
+        }
+
+        .menu-icon {
+            font-size: 22px;
+        }
+
+        .sidebar {
+            width: 260px;
+        }
+
+        .content-wrapper {
+            padding: 16px;
+        }
+    }
+
+    /* اسکرول بار */
+    .sidebar::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .sidebar::-webkit-scrollbar-track {
+        background: var(--border-light);
+        border-radius: 10px;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+        background: var(--orange);
+        border-radius: 10px;
+    }
+</style>
+
+<script>
+    // توابع کنترل سایدبار
+    function toggleSidebar() {
+        var sidebar = document.getElementById('sidebar');
+        var overlay = document.getElementById('sidebarOverlay');
+
+        if (sidebar.classList.contains('open')) {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('active');
+        } else {
+            sidebar.classList.add('open');
+            overlay.classList.add('active');
+        }
+    }
+
+    function closeSidebar() {
+        var sidebar = document.getElementById('sidebar');
+        var overlay = document.getElementById('sidebarOverlay');
+
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
+    }
+
+    // بستن منو با کلیک روی لینک‌ها
+    document.addEventListener('DOMContentLoaded', function() {
+        var links = document.querySelectorAll('.sidebar-link');
+
+        links.forEach(function(link) {
+            link.addEventListener('click', function() {
+                setTimeout(closeSidebar, 150);
+            });
+        });
+
+        // بستن منو با کلید ESC
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeSidebar();
+            }
+        });
+    });
+</script>
