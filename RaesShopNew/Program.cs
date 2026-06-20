@@ -14,6 +14,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddDbContext<DataContext>(a =>
     a.UseSqlServer(ConstantTypes.ConnectionString));
 builder.Services.AddControllers();
+builder.Services.AddScoped<SearchService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<Application.Helpers.Cpanel.FileUpload>();
 builder.Services.AddScoped(a => new HttpClient

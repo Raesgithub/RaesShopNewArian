@@ -1,15 +1,42 @@
-﻿@inherits LayoutComponentBase
+﻿@using Application.Services
+@using RaesShopNew.Components.Pages.Store
+@inherits LayoutComponentBase
+@rendermode InteractiveServer
+@inject BasketService Basket
+@inject SearchService SearchSvc
 
-<!-- هدر بالا - فقط دکمه همبرگر -->
+
 <div class="top-header">
     <div class="header-container">
         <button class="menu-btn" id="menuBtn" onclick="toggleSidebar()">
             <span class="menu-icon">☰</span>
         </button>
+
+       <BasketWidget />
+        <!-- برند -->
+        <div class="brand">
+            <div class="brand-title">دیجی‌کالا</div>
+            <div class="brand-sub">فروشگاه من</div>
+        </div>
+
+        <!-- سرچ -->
+        <div class="header-search">
+            <input class="header-search-input"
+                   placeholder="جستجوی محصول..."
+                   value="@SearchSvc.SearchTerm"
+                   @oninput="OnSearch"
+                   @onkeydown="HandleKey" />
+            <button class="header-search-btn" @onclick="DoSearch">جستجو</button>
+        </div>
+
+        <!-- پشتیبانی -->
+        <div class="support-box">
+            <div class="support-label">پشتیبانی</div>
+            <div class="support-number">119</div>
+        </div>
     </div>
 </div>
 
-<!-- سایدبار (منوی کشویی از راست) -->
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 <div class="sidebar" id="sidebar">
     <div class="sidebar-header">
@@ -45,19 +72,7 @@
     </div>
 </div>
 
-<!-- محتوای اصلی -->
-<div class="main-content">
-    <div class="content-wrapper">
-        @Body
-    </div>
-</div>
-
 <style>
-    /* ============================================================
-           سایدبار مدرن - باز و بسته شدن از راست صفحه
-           بدون هیچ فضای بنفش
-        ============================================================ */
-
     :root {
         --orange: #e85d04;
         --orange-dark: #bb3e03;
@@ -70,39 +85,33 @@
         --sidebar-width: 280px;
     }
 
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
         background: #f5f5f0;
         font-family: 'Segoe UI', 'Inter', Tahoma, sans-serif;
     }
 
-    /* ========== هدر بالا - فقط دکمه همبرگر ========== */
     .top-header {
-        background: var(--white);
+        background: rgba(255,255,255,0.96);
         border-bottom: 1px solid var(--border-light);
         position: sticky;
         top: 0;
         z-index: 100;
         backdrop-filter: blur(8px);
-        background: rgba(255,255,255,0.96);
         box-shadow: 0 1px 8px rgba(0,0,0,0.02);
     }
 
     .header-container {
         max-width: 1400px;
         margin: 0 auto;
-        padding: 12px 24px;
+        padding: 10px 24px;
         display: flex;
         justify-content: flex-start;
         align-items: center;
+        gap: 16px;
     }
 
-    /* دکمه همبرگر */
     .menu-btn {
         background: var(--orange-soft);
         border: none;
@@ -114,21 +123,13 @@
         align-items: center;
         justify-content: center;
         transition: all 0.3s;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        flex-shrink: 0;
     }
 
-        .menu-btn:hover {
-            background: #fde6cc;
-            transform: scale(0.95);
-        }
+        .menu-btn:hover { background: #fde6cc; transform: scale(0.95); }
 
-    .menu-icon {
-        font-size: 24px;
-        color: var(--orange);
-        font-weight: 500;
-    }
+    .menu-icon { font-size: 24px; color: var(--orange); }
 
-    /* ========== سایدبار (منوی کشویی از راست) ========== */
     .sidebar {
         position: fixed;
         top: 0;
@@ -144,18 +145,12 @@
         border-left: 1px solid var(--border-light);
     }
 
-        .sidebar.open {
-            right: 0;
-        }
+        .sidebar.open { right: 0; }
 
-    /* اوورلی پشت سایدبار */
     .sidebar-overlay {
         position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.4);
+        inset: 0;
+        background: rgba(0,0,0,0.4);
         backdrop-filter: blur(3px);
         z-index: 1000;
         opacity: 0;
@@ -163,12 +158,8 @@
         transition: all 0.3s ease;
     }
 
-        .sidebar-overlay.active {
-            opacity: 1;
-            visibility: visible;
-        }
+        .sidebar-overlay.active { opacity: 1; visibility: visible; }
 
-    /* هدر سایدبار */
     .sidebar-header {
         padding: 24px 20px;
         border-bottom: 2px solid var(--border-light);
@@ -190,9 +181,7 @@
         color: transparent;
     }
 
-        .sidebar-logo span:first-child {
-            font-size: 1.5rem;
-        }
+        .sidebar-logo span:first-child { font-size: 1.5rem; }
 
     .sidebar-close {
         background: #f0ece6;
@@ -209,13 +198,8 @@
         justify-content: center;
     }
 
-        .sidebar-close:hover {
-            background: var(--orange);
-            color: white;
-            transform: rotate(90deg);
-        }
+        .sidebar-close:hover { background: var(--orange); color: white; transform: rotate(90deg); }
 
-    /* آیتم‌های منو */
     .sidebar-nav {
         flex: 1;
         padding: 20px 16px;
@@ -235,7 +219,6 @@
         font-weight: 500;
         transition: all 0.25s;
         font-size: 1rem;
-        cursor: pointer;
     }
 
         .sidebar-link:hover {
@@ -244,11 +227,7 @@
             transform: translateX(-5px);
         }
 
-    .sidebar-icon {
-        font-size: 1.2rem;
-        width: 28px;
-        text-align: center;
-    }
+    .sidebar-icon { font-size: 1.2rem; width: 28px; text-align: center; }
 
     .sidebar-divider {
         height: 1px;
@@ -256,76 +235,139 @@
         margin: 16px 0;
     }
 
-    /* فوتر سایدبار */
     .sidebar-footer {
         padding: 20px;
         border-top: 1px solid var(--border-light);
         text-align: center;
     }
 
-    .sidebar-version {
-        font-size: 0.75rem;
+    .sidebar-version { font-size: 0.75rem; color: var(--text-gray); }
+
+    @@media (max-width: 768px) {
+        .header-container { padding: 10px 16px; }
+        .sidebar { width: 260px; }
+    }
+</style>
+@code {
+    private void OnSearch(ChangeEventArgs e)
+    {
+        SearchSvc.SearchTerm = e.Value?.ToString() ?? "";
+    }
+
+    private void DoSearch()
+    {
+        SearchSvc.SearchTerm = SearchSvc.SearchTerm;
+    }
+
+    private void HandleKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") DoSearch();
+    }
+
+}
+<style>
+    .brand {
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+    }
+
+    .brand-title {
+        font-weight: 800;
+        font-size: 1.2rem;
+        background: linear-gradient(135deg, var(--orange), var(--orange-light));
+        background-clip: text;
+        -webkit-background-clip: text;
+        color: transparent;
+        white-space: nowrap;
+    }
+
+    .brand-sub {
+        font-size: 0.6rem;
+        color: var(--orange-dark);
+    }
+
+    .header-search {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+        max-width: 480px;
+    }
+
+    .header-search-input {
+        flex: 1;
+        padding: 10px 18px;
+        border-radius: 50px;
+        border: 1.5px solid var(--border-light);
+        background: #fffcf8;
+        outline: none;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+        font-family: inherit;
+    }
+
+        .header-search-input:focus {
+            border-color: var(--orange);
+            box-shadow: 0 0 0 3px rgba(232,93,4,0.1);
+        }
+
+    .header-search-btn {
+        background: linear-gradient(100deg, var(--orange), var(--orange-light));
+        color: white;
+        padding: 10px 20px;
+        border-radius: 50px;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.85rem;
+        white-space: nowrap;
+        transition: transform 0.2s;
+        font-family: inherit;
+    }
+
+        .header-search-btn:hover {
+            transform: scale(0.97);
+        }
+
+    .support-box {
+        text-align: center;
+        padding: 5px 16px;
+        border-radius: 50px;
+        background: #fef9f0;
+        border: 1px solid var(--border-light);
+        flex-shrink: 0;
+    }
+
+    .support-label {
+        font-size: 0.65rem;
         color: var(--text-gray);
     }
 
-    /* ========== محتوای اصلی ========== */
-    .main-content {
-        flex: 1;
-        max-width: 1400px;
-        margin: 0 auto;
-        width: 100%;
+    .support-number {
+        font-weight: 800;
+        color: var(--orange);
+        font-size: 0.9rem;
     }
 
-    .content-wrapper {
-        padding: 24px;
-    }
-
-    /* ========== ریسپانسیو ========== */
     @@media (max-width: 768px) {
-        .header-container {
-            padding: 10px 16px;
+        .brand {
+            display: none;
         }
 
-        .menu-btn {
-            width: 42px;
-            height: 42px;
+        .support-box {
+            display: none;
         }
 
-        .menu-icon {
-            font-size: 22px;
+        .header-search {
+            max-width: 100%;
         }
-
-        .sidebar {
-            width: 260px;
-        }
-
-        .content-wrapper {
-            padding: 16px;
-        }
-    }
-
-    /* اسکرول بار */
-    .sidebar::-webkit-scrollbar {
-        width: 4px;
-    }
-
-    .sidebar::-webkit-scrollbar-track {
-        background: var(--border-light);
-        border-radius: 10px;
-    }
-
-    .sidebar::-webkit-scrollbar-thumb {
-        background: var(--orange);
-        border-radius: 10px;
     }
 </style>
-
 <script>
-    // توابع کنترل سایدبار
     function toggleSidebar() {
         var sidebar = document.getElementById('sidebar');
         var overlay = document.getElementById('sidebarOverlay');
-
         if (sidebar.classList.contains('open')) {
             sidebar.classList.remove('open');
             overlay.classList.remove('active');
@@ -336,28 +378,16 @@
     }
 
     function closeSidebar() {
-        var sidebar = document.getElementById('sidebar');
-        var overlay = document.getElementById('sidebarOverlay');
-
-        sidebar.classList.remove('open');
-        overlay.classList.remove('active');
+        document.getElementById('sidebar').classList.remove('open');
+        document.getElementById('sidebarOverlay').classList.remove('active');
     }
 
-    // بستن منو با کلیک روی لینک‌ها
-    document.addEventListener('DOMContentLoaded', function() {
-        var links = document.querySelectorAll('.sidebar-link');
-
-        links.forEach(function(link) {
-            link.addEventListener('click', function() {
-                setTimeout(closeSidebar, 150);
-            });
+    window.addEventListener('load', function () {
+        document.querySelectorAll('.sidebar-link').forEach(function (link) {
+            link.addEventListener('click', function () { setTimeout(closeSidebar, 150); });
         });
-
-        // بستن منو با کلید ESC
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeSidebar();
-            }
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeSidebar();
         });
     });
 </script>
