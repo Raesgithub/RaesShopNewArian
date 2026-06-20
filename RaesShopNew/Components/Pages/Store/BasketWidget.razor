@@ -1,6 +1,7 @@
 ﻿@using Application.Services
-<!-- Components/BasketWidget.razor -->
 @inject BasketService Basket
+@implements IDisposable
+@inject NavigationManager NavigationManager
 
 <div class="basket-widget">
     <button class="basket-button" @onclick="ToggleBasket">
@@ -67,7 +68,7 @@
                         <span>مجموع:</span>
                         <span class="total-price">@Basket.TotalPrice.ToString("N0") تومان</span>
                     </div>
-                    <button class="checkout-btn">پرداخت</button>
+                    <button class="checkout-btn" @onclick="GoToCheckout">پرداخت</button>
                 </div>
             }
         </div>
@@ -76,64 +77,54 @@
 
 @code {
     private bool IsOpen = false;
-
+    private void GoToCheckout()
+    {
+        IsOpen = false;
+        NavigationManager.NavigateTo("/checkout");
+    }
     protected override void OnInitialized()
     {
         Basket.OnChange += StateHasChanged;
     }
 
-    private void ToggleBasket() => IsOpen = !IsOpen;
-
-    private void RemoveItem(int productId)
+    public void Dispose()
     {
-        Basket.RemoveFromBasket(productId);
+        Basket.OnChange -= StateHasChanged;
     }
+
+    private void ToggleBasket() => IsOpen = !IsOpen;
+    private void RemoveItem(int productId) => Basket.RemoveFromBasket(productId);
 
     private void IncrementQuantity(int productId)
     {
         var item = Basket.Items.FirstOrDefault(i => i.ProductId == productId);
-        if (item != null)
-        {
-            Basket.UpdateQuantity(productId, item.Quantity + 1);
-        }
+        if (item != null) Basket.UpdateQuantity(productId, item.Quantity + 1);
     }
 
     private void DecrementQuantity(int productId)
     {
         var item = Basket.Items.FirstOrDefault(i => i.ProductId == productId);
-        if (item != null)
-        {
-            Basket.UpdateQuantity(productId, item.Quantity - 1);
-        }
+        if (item != null) Basket.UpdateQuantity(productId, item.Quantity - 1);
     }
 
-    private void ClearBasket()
-    {
-        Basket.ClearBasket();
-    }
+    private void ClearBasket() => Basket.ClearBasket();
 
     private string GetFullImageUrl(string? imageUrl)
     {
-        if (string.IsNullOrEmpty(imageUrl))
-            return "/images/no-image.png";
-
-        if (imageUrl.StartsWith("http"))
-            return imageUrl;
-
-        if (imageUrl.StartsWith("/"))
-            return imageUrl;
-
+        if (string.IsNullOrEmpty(imageUrl)) return "/images/no-image.png";
+        if (imageUrl.StartsWith("http")) return imageUrl;
+        if (imageUrl.StartsWith("/")) return imageUrl;
         return $"/uploads/products/{imageUrl}";
     }
 }
+
 <style>
-    /* Basket Widget Styles */
     .basket-widget {
         position: relative;
     }
 
     .basket-button {
-        background: #f1f5f9;
+        background: #fef3e2;
         border: none;
         padding: 8px 16px;
         border-radius: 40px;
@@ -144,15 +135,12 @@
         font-size: 1.2rem;
         position: relative;
         transition: all 0.2s;
+        color: #e85d04;
     }
 
         .basket-button:hover {
-            background: #e2e8f0;
+            background: #fde6cc;
         }
-
-    .basket-icon {
-        font-size: 1.3rem;
-    }
 
     .basket-badge {
         background: #ef4444;
@@ -166,19 +154,22 @@
         justify-content: center;
         position: absolute;
         top: -5px;
-        right: -5px;
+        left: -5px;
     }
 
+    /* RTL fix: open to the left side */
     .basket-dropdown {
         position: absolute;
-        top: 48px;
-        left: 0;
-        width: 380px;
+        top: 52px;
+        right: 0;
+        left: auto;
+        width: 360px;
         max-height: 500px;
         background: white;
         border-radius: 16px;
         box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-        z-index: 1000;
+        border: 1px solid #f0e0d0;
+        z-index: 2000;
         display: flex;
         flex-direction: column;
         overflow: hidden;
@@ -189,13 +180,14 @@
         justify-content: space-between;
         align-items: center;
         padding: 12px 16px;
-        border-bottom: 1px solid #e2e8f0;
-        background: #f8fafc;
+        border-bottom: 1px solid #f0e0d0;
+        background: #fffcf8;
     }
 
         .basket-header h3 {
             margin: 0;
-            font-size: 1.1rem;
+            font-size: 1rem;
+            color: #2d2a24;
         }
 
     .clear-basket {
@@ -207,35 +199,49 @@
     }
 
     .close-basket {
-        background: none;
+        background: #f0ece6;
         border: none;
-        font-size: 1.2rem;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        font-size: 1rem;
         cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
     }
+
+        .close-basket:hover {
+            background: #e85d04;
+            color: white;
+        }
 
     .basket-items {
         flex: 1;
         overflow-y: auto;
-        max-height: 380px;
+        max-height: 350px;
     }
 
     .basket-item {
         display: flex;
-        gap: 12px;
-        padding: 12px;
-        border-bottom: 1px solid #f1f5f9;
+        gap: 10px;
+        padding: 10px 12px;
+        border-bottom: 1px solid #fef3e2;
         position: relative;
+        align-items: center;
     }
 
     .item-image {
-        width: 60px;
-        height: 60px;
-        background: #f8fafc;
+        width: 52px;
+        height: 52px;
+        background: #fdf8f2;
         border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
         overflow: hidden;
+        flex-shrink: 0;
     }
 
         .item-image img {
@@ -244,69 +250,72 @@
             object-fit: cover;
         }
 
-    .no-image-small {
-        font-size: 1.5rem;
-    }
-
     .item-details {
         flex: 1;
+        min-width: 0;
     }
 
     .item-code {
-        font-size: 0.7rem;
-        color: #64748b;
-        margin-bottom: 2px;
+        font-size: 0.68rem;
+        color: #78716c;
     }
 
     .item-title {
         font-weight: 600;
-        font-size: 0.85rem;
-        margin: 4px 0;
-    }
-
-    .item-price-row {
-        margin-bottom: 6px;
+        font-size: 0.82rem;
+        margin: 2px 0 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .item-price {
         font-weight: 700;
-        color: #059669;
-        font-size: 0.85rem;
+        color: #e85d04;
+        font-size: 0.82rem;
     }
 
     .item-quantity {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
+        margin-top: 4px;
     }
 
     .qty-btn {
-        background: #f1f5f9;
+        background: #fef3e2;
         border: none;
-        width: 24px;
-        height: 24px;
+        width: 22px;
+        height: 22px;
         border-radius: 6px;
         cursor: pointer;
         font-weight: bold;
+        color: #e85d04;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
         .qty-btn:hover {
-            background: #e2e8f0;
+            background: #e85d04;
+            color: white;
         }
 
     .qty-value {
-        min-width: 24px;
+        min-width: 20px;
         text-align: center;
-        font-weight: 500;
+        font-weight: 600;
+        font-size: 0.85rem;
     }
 
     .remove-item {
         background: none;
         border: none;
         cursor: pointer;
-        opacity: 0.5;
+        opacity: 0.4;
         transition: opacity 0.2s;
-        font-size: 1.1rem;
+        font-size: 1rem;
+        flex-shrink: 0;
     }
 
         .remove-item:hover {
@@ -316,40 +325,49 @@
     .empty-basket {
         text-align: center;
         padding: 40px 20px;
-        color: #94a3b8;
+        color: #78716c;
     }
 
         .empty-basket span {
-            font-size: 3rem;
+            font-size: 2.5rem;
+        }
+
+        .empty-basket p {
+            margin-top: 10px;
+            font-size: 0.9rem;
         }
 
     .basket-footer {
-        border-top: 1px solid #e2e8f0;
+        border-top: 1px solid #f0e0d0;
         padding: 12px 16px;
-        background: white;
+        background: #fffcf8;
     }
 
     .basket-total {
         display: flex;
         justify-content: space-between;
-        margin-bottom: 12px;
+        margin-bottom: 10px;
         font-weight: 600;
+        font-size: 0.9rem;
     }
 
     .total-price {
-        color: #059669;
-        font-size: 1.1rem;
+        color: #e85d04;
+        font-size: 1rem;
+        font-weight: 700;
     }
 
     .checkout-btn {
         width: 100%;
-        background: linear-gradient(90deg, #10b981, #059669);
+        background: linear-gradient(100deg, #e85d04, #ffb347);
         color: white;
         border: none;
         padding: 10px;
         border-radius: 10px;
         cursor: pointer;
         font-weight: 600;
+        font-size: 0.95rem;
+        transition: opacity 0.2s;
     }
 
         .checkout-btn:hover {

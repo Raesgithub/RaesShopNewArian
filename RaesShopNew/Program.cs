@@ -38,7 +38,7 @@ builder.Services.AddCors(options =>
 
 
 
-builder.Services.AddSingleton<BasketService>();
+builder.Services.AddScoped<BasketService>();
 
 var app = builder.Build();
 

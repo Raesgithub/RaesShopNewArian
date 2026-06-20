@@ -1,21 +1,15 @@
 ﻿@inherits LayoutComponentBase
 @using RaesShopNew.Components.Layout
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
+<NavMenu />
+
+<div class="main-layout">
+    <div class="top-row px-4">
+        <ModalComponent />
     </div>
-
-    <main>
-        <div class="top-row px-4">
-         
-            <ModalComponent/> 
-                </div>
-
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
+    <article class="content px-4">
+        @Body
+    </article>
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>
@@ -24,19 +18,39 @@
     <span class="dismiss">🗙</span>
 </div>
 
+<style>
+    .main-layout {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
 
+    .top-row {
+        background: rgba(255, 255, 255, 0.96);
+        border-bottom: 1px solid #f0e0d0;
+        padding: 12px 24px;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+    }
 
+    .content {
+        flex: 1;
+        padding: 24px;
+        max-width: 1400px;
+        margin: 0 auto;
+        width: 100%;
+    }
+</style>
 
 @code {
     private bool isModalVisible = false;
-   
-    
 
     private void HandleModalClose()
     {
         isModalVisible = false;
-       
     }
+
     private void GetVisible(bool args)
     {
         isModalVisible = args;
