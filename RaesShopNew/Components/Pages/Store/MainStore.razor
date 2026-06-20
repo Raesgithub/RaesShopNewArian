@@ -38,29 +38,111 @@
     </div>
 
     <!-- تبلیغات گوگل (بین اسلایدر و محصولات) -->
-    <div class="google-ads-middle">
-        <div class="ad-grid">
-            <div class="ad-card">
-                <div class="ad-icon">📱</div>
-                <div class="ad-title">موبایل جدید</div>
-                <div class="ad-desc">آیفون و سامسونگ با بهترین قیمت</div>
-                <div class="ad-link">خرید →</div>
+    <div class="trust-bar">
+        <div class="trust-item">
+            <div class="trust-icon">✅</div>
+            <div class="trust-text">
+                <div class="trust-title">تضمین اصالت کالا</div>
+                <div class="trust-desc">تمام محصولات اورجینال</div>
             </div>
-            <div class="ad-card">
-                <div class="ad-icon">💻</div>
-                <div class="ad-title">لپ‌تاپ گیمینگ</div>
-                <div class="ad-desc">تخفیف ویژه دانشجویی</div>
-                <div class="ad-link">مشاهده →</div>
+        </div>
+        <div class="trust-divider"></div>
+        <div class="trust-item">
+            <div class="trust-icon">🚚</div>
+            <div class="trust-text">
+                <div class="trust-title">ارسال سریع</div>
+                <div class="trust-desc">تحویل در کمترین زمان</div>
             </div>
-            <div class="ad-card">
-                <div class="ad-icon">🎧</div>
-                <div class="ad-title">هدفون بی سیم</div>
-                <div class="ad-desc">ارسال رایگان</div>
-                <div class="ad-link">فروش ویژه →</div>
+        </div>
+        <div class="trust-divider"></div>
+        <div class="trust-item">
+            <div class="trust-icon">💰</div>
+            <div class="trust-text">
+                <div class="trust-title">بهترین قیمت</div>
+                <div class="trust-desc">تضمین قیمت مناسب</div>
+            </div>
+        </div>
+        <div class="trust-divider"></div>
+        <div class="trust-item">
+            <div class="trust-icon">🔄</div>
+            <div class="trust-text">
+                <div class="trust-title">ضمانت بازگشت</div>
+                <div class="trust-desc">۷ روز مرجوعی بدون سوال</div>
+            </div>
+        </div>
+        <div class="trust-divider"></div>
+        <div class="trust-item">
+            <div class="trust-icon">🔒</div>
+            <div class="trust-text">
+                <div class="trust-title">پرداخت امن</div>
+                <div class="trust-desc">درگاه بانکی معتبر</div>
             </div>
         </div>
     </div>
+    <style>
+            .trust-bar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                background: white;
+                border: 1px solid var(--border-light);
+                border-radius: 20px;
+                padding: 16px 28px;
+                margin: 20px 0 28px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+                flex-wrap: wrap;
+                gap: 12px;
+            }
 
+            .trust-item {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                flex: 1;
+                min-width: 140px;
+            }
+
+            .trust-icon {
+                font-size: 1.6rem;
+                flex-shrink: 0;
+            }
+
+            .trust-title {
+                font-weight: 700;
+                font-size: 0.85rem;
+                color: var(--text-dark);
+                white-space: nowrap;
+            }
+
+            .trust-desc {
+                font-size: 0.72rem;
+                color: var(--text-muted);
+                margin-top: 2px;
+            }
+
+            .trust-divider {
+                width: 1px;
+                height: 36px;
+                background: var(--border-light);
+                flex-shrink: 0;
+            }
+
+            @@media (max-width: 768px) {
+                .trust-bar {
+                    padding: 12px 16px;
+                    gap: 8px;
+                }
+
+                .trust-divider {
+                    display: none;
+                }
+
+                .trust-item {
+                    min-width: calc(50% - 8px);
+                    flex: none;
+                }
+            }
+    </style>
     <!-- Products -->
     <main class="products-area">
         @if (IsLoading)

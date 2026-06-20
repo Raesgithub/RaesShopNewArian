@@ -8,18 +8,19 @@
 
 <div class="top-header">
     <div class="header-container">
-        <button class="menu-btn" id="menuBtn" onclick="toggleSidebar()">
-            <span class="menu-icon">☰</span>
-        </button>
 
-       <BasketWidget />
-        <!-- برند -->
-        <div class="brand">
-            <div class="brand-title">دیجی‌کالا</div>
-            <div class="brand-sub">فروشگاه من</div>
+        <!-- راست: همبرگر + برند -->
+        <div class="header-right">
+            <button class="menu-btn" id="menuBtn" onclick="toggleSidebar()">
+                <span class="menu-icon">☰</span>
+            </button>
+            <div class="brand">
+                <div class="brand-title">دیجی‌کالا</div>
+                <div class="brand-sub">فروشگاه من</div>
+            </div>
         </div>
 
-        <!-- سرچ -->
+        <!-- وسط: سرچ -->
         <div class="header-search">
             <input class="header-search-input"
                    placeholder="جستجوی محصول..."
@@ -29,14 +30,17 @@
             <button class="header-search-btn" @onclick="DoSearch">جستجو</button>
         </div>
 
-        <!-- پشتیبانی -->
-        <div class="support-box">
-            <div class="support-label">پشتیبانی</div>
-            <div class="support-number">119</div>
+        <!-- چپ: پشتیبانی + سبد -->
+        <div class="header-left">
+            <div class="support-box">
+                <div class="support-label">پشتیبانی</div>
+                <div class="support-number">119</div>
+            </div>
+            <BasketWidget />
         </div>
+
     </div>
 </div>
-
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 <div class="sidebar" id="sidebar">
     <div class="sidebar-header">
@@ -266,15 +270,38 @@
 
 }
 <style>
+    .header-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 10px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    .header-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-shrink: 0;
+    }
+
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-shrink: 0;
+    }
+
     .brand {
         display: flex;
         flex-direction: column;
-        flex-shrink: 0;
     }
 
     .brand-title {
         font-weight: 800;
-        font-size: 1.2rem;
+        font-size: 1.1rem;
         background: linear-gradient(135deg, var(--orange), var(--orange-light));
         background-clip: text;
         -webkit-background-clip: text;
@@ -292,7 +319,6 @@
         align-items: center;
         gap: 8px;
         flex: 1;
-        max-width: 480px;
     }
 
     .header-search-input {
@@ -303,8 +329,8 @@
         background: #fffcf8;
         outline: none;
         font-size: 0.9rem;
-        transition: all 0.2s;
         font-family: inherit;
+        transition: all 0.2s;
     }
 
         .header-search-input:focus {
@@ -321,9 +347,9 @@
         cursor: pointer;
         font-weight: 600;
         font-size: 0.85rem;
+        font-family: inherit;
         white-space: nowrap;
         transition: transform 0.2s;
-        font-family: inherit;
     }
 
         .header-search-btn:hover {
@@ -332,7 +358,7 @@
 
     .support-box {
         text-align: center;
-        padding: 5px 16px;
+        padding: 5px 14px;
         border-radius: 50px;
         background: #fef9f0;
         border: 1px solid var(--border-light);
@@ -340,17 +366,22 @@
     }
 
     .support-label {
-        font-size: 0.65rem;
+        font-size: 0.62rem;
         color: var(--text-gray);
     }
 
     .support-number {
         font-weight: 800;
         color: var(--orange);
-        font-size: 0.9rem;
+        font-size: 0.85rem;
     }
 
     @@media (max-width: 768px) {
+        .header-container {
+            padding: 8px 16px;
+            gap: 8px;
+        }
+
         .brand {
             display: none;
         }
@@ -360,7 +391,7 @@
         }
 
         .header-search {
-            max-width: 100%;
+            flex: 1;
         }
     }
 </style>
